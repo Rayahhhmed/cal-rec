@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  thrive_rec:
+    container_name: cal_rec
+    image: cal_rec
+    ports:
+      - "5000:5000"
+    build:
+      context: .
+      dockerfile: Dockerfile
