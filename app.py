@@ -1,45 +1,51 @@
 
-from thrive_cal import Calendar, CalendarEvent, GenericEvent
+from thrive_cal import Calendar, CalendarEvent
 import pickle
 from flask import Flask, render_template, request, jsonify
-
+from datetime import datetime
 app = Flask(__name__)
-
+format_string = "%Y-%m-%d %H:%M:%S.%f"
 model = pickle.load(open('model.pkl', 'rb'))
 user_calendar = Calendar()
 
 
 def get_sentiment_score(sentence):
-    return model.polarity_scores(sentence)
+    res = model.polarity_scores(sentence)['compound']
+    return res if res != 0 else 1  # res == 0 if its neutral
 
 
-@app.route("/hc", methods=["GET"])
+@app.route('/hc', methods=['GET'])
 def health_check():
-    return jsonify({"response": "BE is working"})
+    return jsonify({'response': 'BE is working'})
 
 
-@app.route("/data/generic", methods=["POST"])
-def post_generic_event():
-    ge = GenericEvent(
-        request.get_json()["activity"], request.get_json()["mood"])
-    user_calendar.add_event(ge)
-    print(user_calendar)
-    return jsonify({"activity": ge.name, "mood": ge.mood, "sentiment_score":  get_sentiment_score(ge.name)})
-
-
-@app.route("/data/cal", methods=["POST"])
+@app.route('/data/event', methods=['POST'])
 def post_cal_event():
+    start = datetime.strptime(request.get_json()[
+        'start'].replace('_', ' '), format_string)
+    end = datetime.strptime(request.get_json()[
+        'end'].replace('_', ' '), format_string)
     ce = CalendarEvent(
-        request.get_json()["activity"], request.get_json()["mood"],  request.get_json()["time_start"],  request.get_json()["time_end"])
+        request.get_json()['activity'], request.get_json()['mood'],  start,  end, request.get_json()['negotiable'])
     user_calendar.add_event(ce)
-    print(user_calendar)
-    return jsonify({"activity": ce.name, "mood": ce.mood, "time_start": ce.time_start, "time_end": ce.time_end})
+    return jsonify({'activity': ce.name, 'mood': ce.mood, 'start': ce.start, 'end': ce.end})
 
 
-@app.route("/data/cal", methods=["GET"])
-def get_reccomendation():
-    pass
+@app.route('/data/cal/<start>/<end>', methods=['GET'])
+def get_reccomendation(start, end):
+    start = datetime.strptime(start.replace('_', ' '), format_string)
+    end = datetime.strptime(end.replace('_', ' '), format_string)
+
+    sched = user_calendar.recommend_activity(
+        start, end, classifier=get_sentiment_score)
+    sched.sort(key=lambda event: event.start)
+    resp = []
+    for event in sched:
+        resp.append({'name': event.name, 'mood': event.mood, 'start': event.start,
+                    'end': event.end, 'negotiable': event.negotiable})
+
+    return jsonify(resp)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
