@@ -17,7 +17,7 @@ class CalendarEvent:
 
 
 def get_mood_score(event, classifier):
-    return event.mood * float(classifier(event.name))
+    return event.mood + float(classifier(event.name))
 
 
 class Calendar:
@@ -41,18 +41,17 @@ class Calendar:
         for event in self.events:
             dt = event.end - event.start
             sentiment_score = get_mood_score(event, classifier)
-            if dt == length and sentiment_score > mood_lo:
+            if dt == length and sentiment_score >= mood_lo:
                 possible_events.append(event)
-        random.seed(2)
         random.shuffle(possible_events)
         if len(possible_events) > 0:
-            return possible_events.pop()
+            return possible_events
         else:
             return None
 
     def is_unique_event_in_schedule(self, schedule, event):
         for curr_event in schedule:
-            if curr_event.name == event:
+            if curr_event.name == event.name:
                 return False
         return True
 
@@ -62,32 +61,33 @@ class Calendar:
         negotiable_events = []  # These are negotiable events
         events_within_range = self.get_events_by_date(
             datetime_start, datetime_end)
-
         for event in events_within_range:
             sentiment_score = get_mood_score(event, classifier)
             # set the non negotiable ones and check mood
             if event.negotiable:
-                negotiable_events.append((event.mood * sentiment_score, event))
+                negotiable_events.append((sentiment_score, event))
             else:
-                day_score += event.mood * sentiment_score
+                day_score += sentiment_score
                 schedule.append(event)
 
             # check the negotiable events
             sorted(negotiable_events)
-
             for _ in range(len(negotiable_events)):
                 score, curr_event = negotiable_events.pop()
-
                 if score < 0:
                     dt = curr_event.end - curr_event.start
                     # This event makes users mood lower than thresh
                     # So find a suitable swap from events list
-                    res = self.get_events_by_length_and_mood(
-                        dt, score, classifier)
-                    if res is not None:
-                        schedule.append(CalendarEvent(
-                            name=res.name, mood=res.mood, start=curr_event.start, end=curr_event.end, negotiable=True))
-                        day_score += get_mood_score(res, classifier)
+                    results = self.get_events_by_length_and_mood(
+                        dt,
+                        NEUTRAL_MOOD, classifier)
+                    if results is not None:
+                        for res in results:
+                            if self.is_unique_event_in_schedule(schedule=schedule, event=res):
+                                schedule.append(CalendarEvent(
+                                    name=res.name, mood=res.mood, start=curr_event.start, end=curr_event.end, negotiable=True))
+                                day_score += get_mood_score(res, classifier)
+                                break
                 else:
                     # Unfortunate, user has not done previous activities of similar things
                     schedule.append(curr_event)
@@ -127,9 +127,10 @@ class Calendar:
         #                 fast_access_possible_recs[i].append(res)
 
         # for gap_start, gap_end in possible_event_times:
-        #     for i in range (1, gap_end - gap_start + 1):
+        #     for i in range(1, gap_end - gap_start + 1):
         #         if len(fast_access_possible_recs[i]) > 0:
-
+        #             possible_reccs.append(res)
+        #             fast_access_possible_recs[i].append(res)
         return schedule
 
     def __repr__(self) -> str:
