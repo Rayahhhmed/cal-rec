@@ -93,44 +93,44 @@ class Calendar:
                     schedule.append(curr_event)
                     day_score += score
         # ###################################################
-        # # Sorting by start time so we can check the gaps
-        # schedule.sort(key=lambda event: event.start)
-        # possible_event_times = []  # []
-        # possible_reccs = []  # possible events we can recommend
-        # fast_access_possible_recs = {}
+        # Sorting by start time so we can check the gaps
+        schedule.sort(key=lambda event: event.start)
+        possible_event_times = []  # []
+        possible_reccs = []  # possible events we can recommend
+        fast_access_possible_recs = {}
 
-        # # Dummy initialised so we can do O(n) walk through
-        # max_gap_duration = 0
-        # for i in range(len(schedule) - 1):
-        #     # Going through all the events then making sure we got
-        #     curr_event = schedule[i]
-        #     next_event = schedule[i + 1]
-        #     gap_duration = next_event.start - curr_event.end
-        #     if gap_duration.total_seconds() >= 0:  # There's a gap between events
-        #         max_gap_duration = max(gap_duration, max_gap_duration)
-        #         possible_event_times.append[(curr_event.end, next_event.start)]
+        # Dummy initialised so we can do O(n) walk through
+        max_gap_duration = 0
+        for i in range(len(schedule) - 1):
+            # Going through all the events then making sure we got
+            curr_event = schedule[i]
+            next_event = schedule[i + 1]
+            gap_duration = next_event.start - curr_event.end
+            if gap_duration.total_seconds() >= 0:  # There's a gap between events
+                max_gap_duration = max(gap_duration, max_gap_duration)
+                possible_event_times.append[(curr_event.end, next_event.start)]
 
-        # last_event = schedule[-1]
-        # last_gap_duration = datetime_end - last_event.end
-        # if last_gap_duration.total_seconds() >= 0:  # There's a gap between events
-        #     max_gap_duration = max(last_gap_duration, max_gap_duration)
-        #     possible_event_times.append[(curr_event.end, datetime_end)]
-        # #####################################################
-        # for i in range(max_gap_duration):
-        #     results = self.get_events_by_length_and_mood(
-        #         i, NEUTRAL_MOOD, classifier)
-        #     fast_access_possible_recs.setdefault(i, [])
-        #     if results is not None:
-        #         for res in results:
-        #             if self.is_unique_event_in_schedule(schedule, res) and self.is_unique_event_in_schedule(possible_reccs, res):
-        #                 possible_reccs.append(res)
-        #                 fast_access_possible_recs[i].append(res)
+        last_event = schedule[-1]
+        last_gap_duration = datetime_end - last_event.end
+        if last_gap_duration.total_seconds() >= 0:  # There's a gap between events
+            max_gap_duration = max(last_gap_duration, max_gap_duration)
+            possible_event_times.append[(curr_event.end, datetime_end)]
+        #####################################################
+        for i in range(max_gap_duration):
+            results = self.get_events_by_length_and_mood(
+                i, NEUTRAL_MOOD, classifier)
+            fast_access_possible_recs.setdefault(i, [])
+            if results is not None:
+                for res in results:
+                    if self.is_unique_event_in_schedule(schedule, res) and self.is_unique_event_in_schedule(possible_reccs, res):
+                        possible_reccs.append(res)
+                        fast_access_possible_recs[i].append(res)
 
-        # for gap_start, gap_end in possible_event_times:
-        #     for i in range(1, gap_end - gap_start + 1):
-        #         if len(fast_access_possible_recs[i]) > 0:
-        #             possible_reccs.append(res)
-        #             fast_access_possible_recs[i].append(res)
+        for gap_start, gap_end in possible_event_times:
+            for i in range(1, gap_end - gap_start + 1):
+                if len(fast_access_possible_recs[i]) > 0:
+                    possible_reccs.append(res)
+                    fast_access_possible_recs[i].append(res)
         return schedule
 
     def __repr__(self) -> str:
